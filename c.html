@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte General de Gastos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 40px;
+        }
+        h2 {
+            color: #333;
+            margin-top: 0;
+        }
+        .section {
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            vertical-align: middle;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        td.pagado {
+            background-color: #d4edda;
+        }
+        td.adeudado {
+            background-color: #f8d7da;
+        }
+        .saldo-total {
+            text-align: right;
+            font-size: 1.2em;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .form-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .form-section input, .form-section select {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .form-section button {
+            padding: 8px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .inflacion-input {
+            width: 80px;
+        }
+        .delete-btn {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em;
+            color: #dc3545;
+            padding: 0;
+            margin: 0 auto;
+            display: block;
+        }
+        .pasteleria-cell {
+            text-align: center;
+        }
+        .pasteleria-table-container {
+            display: none;
+            margin-bottom: 20px;
+            border-top: 1px solid #ccc;
+            padding-top: 15px;
+        }
+        .pasteleria-nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .pasteleria-nav button {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pasteleria-nav button.active {
+            background-color: #0056b3;
+        }
+        .summary-table input[type="number"] {
+            width: 90%;
+            border: none;
+            background-color: transparent;
+            padding: 0;
+            font-size: inherit;
+        }
+        .summary-table td {
+            text-align: right;
+        }
+        .summary-table td:first-child {
+            text-align: left;
+        }
+        .currency-input-container, .interes-input-container {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 5px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+        .currency-input-container::before {
+            content: '$';
+            padding-right: 5px;
+            color: #333;
+        }
+        .currency-input-container input {
+            text-align: right;
+            padding: 0;
+        }
+        .interes-input-container {
+            justify-content: center;
+            width: auto;
+        }
+        .interes-input-container input {
+            width: 50px;
+            text-align: right;
+        }
+        .interes-input-container::after {
+            content: '%';
+            padding-left: 5px;
+            color: #333;
+        }
+        .editable {
+            cursor: pointer;
+        }
+        .editable:hover {
+            background-color: #e9ecef;
+        }
+        .edit-input {
+            width: 100%;
+            border: none;
+            box-sizing: border-box;
+            padding: 0;
+            margin: 0;
+            background-color: transparent;
+            font-size: inherit;
+            font-family: inherit;
+            text-align: inherit;
+        }
+        .save-btn-month {
+            margin-top: 20px;
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        .save-btn-month:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Reporte General de Gastos y Sueldos</h1>
+    
+    <div class="section">
+        <h2>Préstamo</h2>
+        <div id="prestamo-content">
+            <p>Monto Inicial: $6.000.000,00</p>
+            <p>Interés Semanal: 1.5%</p>
+            <p>Fecha de Inicio: 7/01/2025</p>
+            <div class="saldo-total">Monto Adeudado a la fecha: <span id="montoFinalPrestamo"></span></div>
+        </div>
+    </div>
+    
+    <div class="section">
+        <h2>Caja Chica</h2>
+        <div class="form-section">
+            <input type="date" id="gasto-fecha" placeholder="Fecha">
+            <input type="text" id="gasto-descripcion" placeholder="Descripción">
+            <input type="number" id="gasto-monto" step="0.01" placeholder="Monto">
+            <button id="btn-agregar-gasto">Agregar Gasto</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Descripción</th>
+                    <th>Monto</th>
+                </tr>
+            </thead>
+            <tbody id="caja-chica-list"></tbody>
+        </table>
+        <div class="saldo-total">Saldo Disponible: <span id="saldo-disponible"></span></div>
+    </div>
+
+    <div class="section">
+        <h2>Sueldos</h2>
+        <div class="form-section">
+            <select id="sueldo-mes">
+                <option value="Enero">Enero</option>
+                <option value="Febrero">Febrero</option>
+                <option value="Marzo">Marzo</option>
+                <option value="Abril">Abril</option>
+                <option value="Mayo">Mayo</option>
+                <option value="Junio">Junio</option>
+                <option value="Julio">Julio</option>
+                <option value="Agosto">Agosto</option>
+                <option value="Septiembre">Septiembre</option>
+                <option value="Octubre">Octubre</option>
+                <option value="Noviembre">Noviembre</option>
+                <option value="Diciembre">Diciembre</option>
+            </select>
+            <input type="number" id="sueldo-montoK" step="0.01" placeholder="Monto 'K'">
+            <input type="number" id="sueldo-montoMilei" step="0.01" placeholder="Monto 'Milei'">
+            <button id="btn-agregar-sueldo">Agregar Sueldo</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Mes</th>
+                    <th>Monto 'K'</th>
+                    <th>Monto 'Milei'</th>
+                    <th>Inflación (%)</th>
+                    <th>Total Adeudado</th>
+                    <th style="width: 40px;"></th>
+                </tr>
+            </thead>
+            <tbody id="sueldos-list"></tbody>
+        </table>
+        <div class="saldo-total">Total Adeudado General: <span id="sueldos-total"></span></div>
+    </div>
+
+    <div class="section">
+        <h2>Pastelería</h2>
+        <div class="pasteleria-nav" id="pasteleria-nav"></div>
+        <div id="pasteleria-meses-container"></div>
+    </div>
+
+    <div class="section">
+        <h2>Resumen Pastelería</h2>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>MES</th>
+                    <th>DEUDA DEL MES</th>
+                    <th>DEUDA ACUMULADA</th>
+                    <th>PAGO</th>
+                    <th>% INTERÉS</th>
+                    <th>TOTAL</th>
+                </tr>
+            </thead>
+            <tbody id="resumen-pasteleria-body"></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, onSnapshot, doc, addDoc, updateDoc, deleteDoc, getDocs, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBt_R-0uXeZ0-ZbTGX6CbgI6ZWqtov56PA",
+        authDomain: "weipis.firebaseapp.com",
+        projectId: "weipis",
+        storageBucket: "weipis.firebasestorage.app",
+        messagingSenderId: "95209854420",
+        appId: "1:95209854420:web:c4b5c1636300a04a33f241"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('es-AR', {
+            style: 'currency',
+            currency: 'ARS',
+            minimumFractionDigits: 2
+        }).format(amount);
+    };
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    // --- Lógica de Préstamo ---
+    function calcularMontoPrestamo() {
+        const montoInicial = 6000000;
+        const interesSemanal = 0.015;
+        const fechaInicio = new Date('2025-01-07');
+        const fechaActual = new Date();
+        const unaSemanaEnMs = 1000 * 60 * 60 * 24 * 7;
+        const diferenciaMs = fechaActual.getTime() - fechaInicio.getTime();
+        const semanasTranscurridas = Math.max(0, Math.floor(diferenciaMs / unaSemanaEnMs));
+        
+        let montoCalculado = montoInicial;
+        for (let i = 0; i < semanasTranscurridas; i++) {
+            montoCalculado *= (1 + interesSemanal);
+        }
+        document.getElementById('montoFinalPrestamo').textContent = formatCurrency(montoCalculado);
+    }
+
+    // --- Lógica de Caja Chica ---
+    const saldoInicialCajaChica = 300000;
+    const gastosCol = collection(db, 'gastos');
+    let gastos = [];
+    
+    const datosInicialesGastos = [
+        { fecha: '2025-01-08', descripcion: 'CONSTRUSEC', monto: 51017.94 },
+        { fecha: '2025-01-08', descripcion: 'PROMAT', monto: 53700.00 },
+        { fecha: '2025-01-09', descripcion: 'PROMAT', monto: 30664.57 },
+        { fecha: '2025-01-13', descripcion: 'CONSTRUSEC', monto: 11541.96 },
+        { fecha: '2025-01-13', descripcion: 'IMCOFUE', monto: 39318.00 },
+        { fecha: '2025-01-15', descripcion: 'IMCOFUE', monto: 21467.00 },
+        { fecha: '2025-01-30', descripcion: 'DON LUCIO', monto: 49450.00 },
+        { fecha: '2025-02-18', descripcion: 'DIARCO', monto: 60166.54 },
+        { fecha: '2025-02-19', descripcion: 'DON LUCIO', monto: 74815.00 },
+        { fecha: '2025-02-20', descripcion: 'MIGA', monto: 26000.00 },
+        { fecha: '2025-02-27', descripcion: 'LA ANONIMA', monto: 37787.33 },
+        { fecha: '2025-02-24', descripcion: 'LA ANONIMA', monto: 20064.44 }
+    ];
+
+    function renderizarCajaChica() {
+        const gastosList = document.getElementById('caja-chica-list');
+        gastosList.innerHTML = '';
+        
+        const depositoRow = document.createElement('tr');
+        depositoRow.innerHTML = `<td>2025-01-01</td><td>DEPOSITO</td><td>${formatCurrency(saldoInicialCajaChica)}</td>`;
+        gastosList.appendChild(depositoRow);
+
+        let totalGastos = 0;
+        gastos.forEach(gasto => {
+            totalGastos += gasto.monto;
+            const row = document.createElement('tr');
+            row.innerHTML = `<td>${gasto.fecha}</td><td>${gasto.descripcion}</td><td>- ${formatCurrency(gasto.monto)}</td>`;
+            gastosList.appendChild(row);
+        });
+
+        const saldoFinal = saldoInicialCajaChica - totalGastos;
+        document.getElementById('saldo-disponible').textContent = formatCurrency(saldoFinal);
+    }
+    
+    async function agregarGasto() {
+        const fecha = document.getElementById('gasto-fecha').value;
+        const descripcion = document.getElementById('gasto-descripcion').value;
+        const monto = parseFloat(document.getElementById('gasto-monto').value);
+
+        if (fecha && descripcion && !isNaN(monto)) {
+            try {
+                await addDoc(gastosCol, { fecha, descripcion, monto });
+                document.getElementById('gasto-fecha').value = '';
+                document.getElementById('gasto-descripcion').value = '';
+                document.getElementById('gasto-monto').value = '';
+            } catch (e) {
+                console.error("Error al agregar documento: ", e);
+            }
+        } else {
+            alert('Por favor, completa todos los campos del gasto.');
+        }
+    }
+    
+    onSnapshot(gastosCol, (snapshot) => {
+        gastos = [];
+        snapshot.docs.forEach(doc => {
+            gastos.push(doc.data());
+        });
+        renderizarCajaChica();
+        actualizarResumenPasteleria();
+    });
+
+    // --- Lógica de Sueldos ---
+    const sueldosCol = collection(db, 'sueldos');
+    let sueldos = [];
+
+    const datosInicialesSueldos = [
+        { mes: 'Enero', montoK: 0, montoMilei: 0, kPagado: false, mileiPagado: false, inflacion: 0 },
+        { mes: 'Febrero', montoK: 0, montoMilei: 0, kPagado: false, mileiPagado: false, inflacion: 0 },
+        { mes: 'Marzo', montoK: 0, montoMilei: 0, kPagado: false, mileiPagado: false, inflacion: 0 },
+        { mes: 'Abril', montoK: 0, montoMilei: 0, kPagado: false, mileiPagado: false, inflacion: 0 },
+        { mes: 'Mayo', montoK: 0, montoMilei: 0, kPagado: false, mileiPagado: false, inflacion: 0 },
+        { mes: 'Junio', montoK: 0, montoMilei: 0, kPagado: false, mileiPagado: false, inflacion: 0 }
+    ];
+    
+    function renderizarSueldos() {
+        const sueldosList = document.getElementById('sueldos-list');
+        sueldosList.innerHTML = '';
+        
+        let montoAcumuladoConInteres = 0;
+        
+        // Ordenar los sueldos por mes
+        const sueldosOrdenados = [...sueldos].sort((a, b) => meses.indexOf(a.mes) - meses.indexOf(b.mes));
+
+        sueldosOrdenados.forEach((pago) => {
+            const row = document.createElement('tr');
+            row.dataset.id = pago.id;
+
+            // Lógica de cálculo corregida:
+            // 1. Aplicar la inflación del mes al monto acumulado del mes anterior.
+            montoAcumuladoConInteres *= (1 + pago.inflacion / 100);
+            
+            // 2. Sumar la deuda pendiente del mes actual.
+            const montoBasePendiente = 
+                (!pago.kPagado ? pago.montoK : 0) + 
+                (!pago.mileiPagado ? pago.montoMilei : 0);
+            montoAcumuladoConInteres += montoBasePendiente;
+
+            row.innerHTML = `
+                <td>${pago.mes}</td>
+                <td class="${pago.kPagado ? 'pagado' : 'adeudado'}" data-part="k" data-id="${pago.id}">${formatCurrency(pago.montoK)}</td>
+                <td class="${pago.mileiPagado ? 'pagado' : 'adeudado'}" data-part="milei" data-id="${pago.id}">${formatCurrency(pago.montoMilei)}</td>
+                <td><div class="interes-input-container"><input type="number" class="inflacion-input" value="${pago.inflacion}" step="0.1" data-id="${pago.id}"></div></td>
+                <td>${formatCurrency(montoAcumuladoConInteres)}</td>
+                <td style="text-align: center;"><button class="delete-btn" data-id="${pago.id}">❌</button></td>
+            `;
+            sueldosList.appendChild(row);
+        });
+
+        document.getElementById('sueldos-total').textContent = formatCurrency(montoAcumuladoConInteres);
+        
+        sueldosList.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                if (confirm('¿Estás seguro de que deseas eliminar este registro?')) {
+                    const docRef = doc(db, 'sueldos', id);
+                    await deleteDoc(docRef);
+                }
+            });
+        });
+        
+        sueldosList.querySelectorAll('.inflacion-input').forEach(input => {
+            input.addEventListener('change', async function() {
+                const id = this.dataset.id;
+                const valor = parseFloat(this.value);
+                const docRef = doc(db, 'sueldos', id);
+                await updateDoc(docRef, { inflacion: valor });
+            });
+        });
+
+        sueldosList.querySelectorAll('td[data-part]').forEach(cell => {
+            cell.addEventListener('contextmenu', async function(e) {
+                e.preventDefault();
+                const id = this.dataset.id;
+                const part = this.dataset.part;
+                
+                const pago = sueldos.find(s => s.id === id);
+                if (!pago) return;
+
+                const docRef = doc(db, 'sueldos', id);
+                
+                if (part === 'k') {
+                    await updateDoc(docRef, { kPagado: !pago.kPagado });
+                } else if (part === 'milei') {
+                    await updateDoc(docRef, { mileiPagado: !pago.mileiPagado });
+                }
+            });
+        });
+    }
+
+    async function agregarSueldo() {
+        const mes = document.getElementById('sueldo-mes').value;
+        const montoK = parseFloat(document.getElementById('sueldo-montoK').value);
+        const montoMilei = parseFloat(document.getElementById('sueldo-montoMilei').value);
+
+        if (mes && !isNaN(montoK) && !isNaN(montoMilei)) {
+            if (sueldos.some(pago => pago.mes === mes)) {
+                alert(`Ya existe un registro para el mes de ${mes}.`);
+                return;
+            }
+
+            try {
+                await addDoc(sueldosCol, { mes, montoK, montoMilei, kPagado: false, mileiPagado: false, inflacion: 0 });
+                document.getElementById('sueldo-montoK').value = '';
+                document.getElementById('sueldo-montoMilei').value = '';
+            } catch (e) {
+                console.error("Error al agregar sueldo: ", e);
+            }
+        } else {
+            alert('Por favor, completa todos los campos de sueldo con valores numéricos válidos.');
+        }
+    }
+
+    onSnapshot(sueldosCol, (snapshot) => {
+        sueldos = [];
+        snapshot.docs.forEach(doc => {
+            sueldos.push({ id: doc.id, ...doc.data() });
+        });
+        renderizarSueldos();
+        actualizarResumenPasteleria();
+    });
+
+    // --- Lógica de Pastelería ---
+    const ventasCol = collection(db, 'ventasPasteleria');
+    const preciosCol = collection(db, 'preciosPasteleria');
+    const resumenPasteleriaCol = collection(db, 'resumenPasteleria');
+    
+    let ventasPasteleria = {};
+    let preciosPasteleriaPorMes = {};
+    let resumenPasteleria = {};
+    let mesActualPasteleria = 'Febrero';
+
+    const datosInicialesVentas = {
+        'Febrero': [
+            { fecha: '2025-02-01', diatortas: 4.5, mesadulce: 4, celiaco: 5 },
+            { fecha: '2025-02-21', diatortas: 4, mesadulce: 4, celiaco: 5 },
+            { fecha: '2025-02-22', diatortas: 6.6, mesadulce: 5, celiaco: 12 },
+            { fecha: '2025-02-28', diatortas: 3.3, mesadulce: 5, celiaco: 1 },
+        ],
+        'Marzo': [
+            { fecha: '2025-03-01', diatortas: 5, mesadulce: 4, celiaco: 5 },
+            { fecha: '2025-03-07', diatortas: 4, mesadulce: 1, celiaco: 5 },
+            { fecha: '2025-03-15', diatortas: 6.5, mesadulce: 0, celiaco: 18 },
+            { fecha: '2025-03-18', diatortas: 2.1, mesadulce: 8, celiaco: 3 },
+            { fecha: '2025-03-23', diatortas: 5, mesadulce: 4, celiaco: 5 },
+            { fecha: '2025-03-28', diatortas: 5, mesadulce: 2, celiaco: 9 },
+        ],
+        'Abril': [
+            { fecha: '2025-04-05', diatortas: 6.5, mesadulce: 5, celiaco: 1 },
+            { fecha: '2025-04-12', diatortas: 8.0, mesadulce: 0, celiaco: 2 },
+            { fecha: '2025-04-24', diatortas: 2.0, mesadulce: 2, celiaco: 0 },
+            { fecha: '2025-04-25', diatortas: 4.5, mesadulce: 5, celiaco: 0 },
+            { fecha: '2025-04-26', diatortas: 8.0, mesadulce: 1, celiaco: 0 },
+        ],
+        'Mayo': [
+            { fecha: '2025-05-03', diatortas: 5, mesadulce: 5, celiaco: 0 },
+            { fecha: '2025-05-10', diatortas: 5, mesadulce: 5, celiaco: 5 },
+            { fecha: '2025-05-17', diatortas: 4, mesadulce: 2, celiaco: 0 },
+            { fecha: '2025-05-24', diatortas: 5.5, mesadulce: 6, celiaco: 0 },
+            { fecha: '2025-05-31', diatortas: 4, mesadulce: 4, celiaco: 5 },
+        ],
+        'Junio': [
+            { fecha: '2025-06-01', diatortas: 4, mesadulce: 3, celiaco: 0 },
+            { fecha: '2025-06-07', diatortas: 6, mesadulce: 4, celiaco: 0 },
+        ]
+    };
+    
+    const datosInicialesPrecios = {
+        'Enero': { 'DIATORTAS': 23611, 'MESADULCE': 3091, 'CELIACO': 3465 },
+        'Febrero': { 'DIATORTAS': 23611, 'MESADULCE': 3091, 'CELIACO': 3465 },
+        'Marzo': { 'DIATORTAS': 24083, 'MESADULCE': 3153, 'CELIACO': 3570 },
+        'Abril': { 'DIATORTAS': 25046, 'MESADULCE': 3279, 'CELIACO': 3713 },
+        'Mayo': { 'DIATORTAS': 25546, 'MESADULCE': 3345, 'CELIACO': 3787 },
+        'Junio': { 'DIATORTAS': 26056, 'MESADULCE': 3412, 'CELIACO': 3787 },
+        'Julio': { 'DIATORTAS': 0, 'MESADULCE': 0, 'CELIACO': 0 },
+        'Agosto': { 'DIATORTAS': 0, 'MESADULCE': 0, 'CELIACO': 0 },
+        'Septiembre': { 'DIATORTAS': 0, 'MESADULCE': 0, 'CELIACO': 0 },
+        'Octubre': { 'DIATORTAS': 0, 'MESADULCE': 0, 'CELIACO': 0 },
+        'Noviembre': { 'DIATORTAS': 0, 'MESADULCE': 0, 'CELIACO': 0 },
+        'Diciembre': { 'DIATORTAS': 0, 'MESADULCE': 0, 'CELIACO': 0 }
+    };
+
+    const datosInicialesResumen = {
+        'Enero': { pago: 6000000, interesRate: 0.5, deudaInicial: 6659825.09 },
+        'Febrero': { pago: 0, interesRate: 5 },
+        'Marzo': { pago: 0, interesRate: 5 },
+        'Abril': { pago: 0, interesRate: 4 },
+        'Mayo': { pago: 0, interesRate: 4 },
+        'Junio': { pago: 0, interesRate: 5 }
+    };
+    
+    function crearTablasPasteleria() {
+        const nav = document.getElementById('pasteleria-nav');
+        nav.innerHTML = '';
+        
+        meses.forEach(mes => {
+            const button = document.createElement('button');
+            button.textContent = mes;
+            button.addEventListener('click', () => mostrarTablaPasteleria(mes));
+            nav.appendChild(button);
+        });
+
+        const container = document.getElementById('pasteleria-meses-container');
+        container.innerHTML = '';
+
+        meses.forEach(mes => {
+            const precios = preciosPasteleriaPorMes[mes] || { 'DIATORTAS': 0, 'MESADULCE': 0, 'CELIACO': 0 };
+            const tableContainer = document.createElement('div');
+            tableContainer.id = `tabla-pasteleria-${mes}`;
+            tableContainer.className = 'pasteleria-table-container';
+            tableContainer.innerHTML = `
+                <h3>Ventas de ${mes}</h3>
+                <div class="form-section">
+                    <input type="date" id="pasteleria-fecha-${mes}" placeholder="Fecha">
+                    <input type="number" id="pasteleria-diatortas-${mes}" step="0.1" placeholder="Día Tortas (kg)">
+                    <input type="number" id="pasteleria-mesadulce-${mes}" step="0.1" placeholder="Mesa Dulce (u)">
+                    <input type="number" id="pasteleria-celiaco-${mes}" step="0.1" placeholder="Celiaco (u)">
+                    <button id="btn-agregar-pasteleria-${mes}">Agregar</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th class="pasteleria-cell">DIATORTAS X KG</th>
+                            <th class="pasteleria-cell">MESA DULCE</th>
+                            <th class="pasteleria-cell">CELIACO mesa dulce</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="pasteleria-list-${mes}"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td>TOTAL</td>
+                            <td id="pasteleria-total-diatortas-${mes}"></td>
+                            <td id="pasteleria-total-mesadulce-${mes}"></td>
+                            <td id="pasteleria-total-celiaco-${mes}"></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>PRECIO UNITARIO</td>
+                            <td><div class="currency-input-container"><input type="number" id="precio-diatortas-${mes}" value="${precios.DIATORTAS}" step="0.01" data-mes="${mes}"></div></td>
+                            <td><div class="currency-input-container"><input type="number" id="precio-mesadulce-${mes}" value="${precios.MESADULCE}" step="0.01" data-mes="${mes}"></div></td>
+                            <td><div class="currency-input-container"><input type="number" id="precio-celiaco-${mes}" value="${precios.CELIACO}" step="0.01" data-mes="${mes}"></div></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td>TOTAL PARCIAL</td>
+                            <td id="pasteleria-parcial-diatortas-${mes}"></td>
+                            <td id="pasteleria-parcial-mesadulce-${mes}"></td>
+                            <td id="pasteleria-parcial-celiaco-${mes}"></td>
+                            <td></td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="saldo-total">TOTAL FACTURACIÓN</td>
+                            <td colspan="2" id="pasteleria-total-final-${mes}"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <button class="save-btn-month" id="btn-guardar-pasteleria-${mes}">Guardar cambios del mes</button>
+            `;
+            container.appendChild(tableContainer);
+            
+            document.getElementById(`btn-agregar-pasteleria-${mes}`).addEventListener('click', () => agregarVentaPasteleria(mes));
+            document.getElementById(`btn-guardar-pasteleria-${mes}`).addEventListener('click', () => guardarMesPasteleria(mes));
+
+            document.getElementById(`precio-diatortas-${mes}`).addEventListener('change', () => actualizarPreciosPasteleria(mes));
+            document.getElementById(`precio-mesadulce-${mes}`).addEventListener('change', () => actualizarPreciosPasteleria(mes));
+            document.getElementById(`precio-celiaco-${mes}`).addEventListener('change', () => actualizarPreciosPasteleria(mes));
+        });
+
+        mostrarTablaPasteleria(mesActualPasteleria);
+    }
+    
+    function mostrarTablaPasteleria(mes) {
+        meses.forEach(m => {
+            const table = document.getElementById(`tabla-pasteleria-${m}`);
+            const button = document.querySelector(`#pasteleria-nav button:nth-child(${meses.indexOf(m) + 1})`);
+            if (m === mes) {
+                table.style.display = 'block';
+                button.classList.add('active');
+            } else {
+                table.style.display = 'none';
+                button.classList.remove('active');
+            }
+        });
+        mesActualPasteleria = mes;
+        renderizarPasteleria(mes);
+    }
+
+    function renderizarPasteleria(mes) {
+        const pasteleriaList = document.getElementById(`pasteleria-list-${mes}`);
+        pasteleriaList.innerHTML = '';
+        
+        let totalDiatortas = 0;
+        let totalMesadulce = 0;
+        let totalCeliaco = 0;
+
+        const ventasDelMes = ventasPasteleria[mes] || [];
+        // Ordenar las ventas por fecha
+        ventasDelMes.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+        ventasDelMes.forEach((venta) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="editable" data-field="fecha" data-id="${venta.id}" data-mes="${mes}">${venta.fecha}</td>
+                <td class="pasteleria-cell editable" data-field="diatortas" data-id="${venta.id}" data-mes="${mes}">${venta.diatortas}</td>
+                <td class="pasteleria-cell editable" data-field="mesadulce" data-id="${venta.id}" data-mes="${mes}">${venta.mesadulce}</td>
+                <td class="pasteleria-cell editable" data-field="celiaco" data-id="${venta.id}" data-mes="${mes}">${venta.celiaco}</td>
+                <td style="text-align: center;"><button class="delete-btn" data-id="${venta.id}" data-mes="${mes}">❌</button></td>
+            `;
+            pasteleriaList.appendChild(row);
+            
+            totalDiatortas += venta.diatortas;
+            totalMesadulce += venta.mesadulce;
+            totalCeliaco += venta.celiaco;
+        });
+
+        document.getElementById(`pasteleria-total-diatortas-${mes}`).textContent = totalDiatortas.toFixed(1);
+        document.getElementById(`pasteleria-total-mesadulce-${mes}`).textContent = totalMesadulce;
+        document.getElementById(`pasteleria-total-celiaco-${mes}`).textContent = totalCeliaco;
+        
+        const precios = preciosPasteleriaPorMes[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
+        const parcialDiatortas = totalDiatortas * precios.DIATORTAS;
+        const parcialMesadulce = totalMesadulce * precios.MESADULCE;
+        const parcialCeliaco = totalCeliaco * precios.CELIACO;
+
+        document.getElementById(`pasteleria-parcial-diatortas-${mes}`).textContent = formatCurrency(parcialDiatortas);
+        document.getElementById(`pasteleria-parcial-mesadulce-${mes}`).textContent = formatCurrency(parcialMesadulce);
+        document.getElementById(`pasteleria-parcial-celiaco-${mes}`).textContent = formatCurrency(parcialCeliaco);
+        
+        const totalFinal = parcialDiatortas + parcialMesadulce + parcialCeliaco;
+        document.getElementById(`pasteleria-total-final-${mes}`).textContent = formatCurrency(totalFinal);
+        
+        addEditableListeners();
+
+        pasteleriaList.querySelectorAll('.delete-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const id = this.dataset.id;
+                const mes = this.dataset.mes;
+                if (confirm('¿Estás seguro de que deseas eliminar esta venta?')) {
+                    const docRef = doc(db, 'ventasPasteleria', id);
+                    await deleteDoc(docRef);
+                }
+            });
+        });
+    }
+
+    async function agregarVentaPasteleria(mes) {
+        const fecha = document.getElementById(`pasteleria-fecha-${mes}`).value;
+        const diatortas = parseFloat(document.getElementById(`pasteleria-diatortas-${mes}`).value) || 0;
+        const mesadulce = parseFloat(document.getElementById(`pasteleria-mesadulce-${mes}`).value) || 0;
+        const celiaco = parseFloat(document.getElementById(`pasteleria-celiaco-${mes}`).value) || 0;
+
+        if (fecha) {
+            try {
+                await addDoc(ventasCol, { mes, fecha, diatortas, mesadulce, celiaco });
+                document.getElementById(`pasteleria-fecha-${mes}`).value = '';
+                document.getElementById(`pasteleria-diatortas-${mes}`).value = '';
+                document.getElementById(`pasteleria-mesadulce-${mes}`).value = '';
+                document.getElementById(`pasteleria-celiaco-${mes}`).value = '';
+            } catch (e) {
+                console.error("Error al agregar venta: ", e);
+            }
+        } else {
+            alert('Por favor, ingrese la fecha de la venta.');
+        }
+    }
+    
+    async function actualizarPreciosPasteleria(mes) {
+        const docRef = doc(db, 'preciosPasteleria', mes);
+        const diatortas = parseFloat(document.getElementById(`precio-diatortas-${mes}`).value) || 0;
+        const mesadulce = parseFloat(document.getElementById(`precio-mesadulce-${mes}`).value) || 0;
+        const celiaco = parseFloat(document.getElementById(`precio-celiaco-${mes}`).value) || 0;
+        
+        await updateDoc(docRef, { DIATORTAS: diatortas, MESADULCE: mesadulce, CELIACO: celiaco });
+    }
+
+    function guardarMesPasteleria(mes) {
+        alert(`Cambios de ${mes} guardados exitosamente.`);
+    }
+
+    function addEditableListeners() {
+        document.querySelectorAll('.pasteleria-table-container .editable').forEach(cell => {
+            cell.ondblclick = function() {
+                const mes = this.dataset.mes;
+                const id = this.dataset.id;
+                const field = this.dataset.field;
+                const valor = this.textContent;
+
+                const input = document.createElement('input');
+                input.type = (field === 'fecha' ? 'date' : 'number');
+                input.className = 'edit-input';
+                input.value = valor;
+                
+                this.innerHTML = '';
+                this.appendChild(input);
+                
+                input.focus();
+                
+                input.onblur = async function() {
+                    const nuevoValor = this.value;
+                    const docRef = doc(db, 'ventasPasteleria', id);
+                    if (field === 'fecha') {
+                        await updateDoc(docRef, { [field]: nuevoValor });
+                    } else {
+                        await updateDoc(docRef, { [field]: parseFloat(nuevoValor) || 0 });
+                    }
+                    renderizarPasteleria(mes);
+                };
+            };
+        });
+    }
+
+    // --- Lógica del Resumen Anual ---
+    function actualizarResumenPasteleria() {
+        const resumenBody = document.getElementById('resumen-pasteleria-body');
+        resumenBody.innerHTML = '';
+
+        let deudaAcumulada = resumenPasteleria['Enero']?.deudaInicial || 0;
+        
+        meses.forEach(mes => {
+            const totalFacturacion = calcularTotalMensual(mes);
+            const interesRate = resumenPasteleria[mes]?.interesRate || 0;
+            const pagoDelMes = resumenPasteleria[mes]?.pago || 0;
+
+            const deudaDelMes = Math.max(0, deudaAcumulada + totalFacturacion - pagoDelMes);
+            deudaAcumulada = deudaDelMes * (1 + interesRate / 100);
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${mes}</td>
+                <td>${formatCurrency(totalFacturacion)}</td>
+                <td>${formatCurrency(deudaDelMes)}</td>
+                <td class="editable-pago" data-mes="${mes}">${formatCurrency(pagoDelMes)}</td>
+                <td class="editable-interes" data-mes="${mes}">${interesRate.toFixed(2)}%</td>
+                <td>${formatCurrency(deudaAcumulada)}</td>
+            `;
+            resumenBody.appendChild(row);
+        });
+
+        resumenBody.querySelectorAll('.editable-pago').forEach(cell => {
+            cell.ondblclick = function() {
+                const mes = this.dataset.mes;
+                const valor = resumenPasteleria[mes]?.pago || 0;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'edit-input';
+                input.value = valor;
+                input.onblur = async function() {
+                    const nuevoValor = parseFloat(this.value) || 0;
+                    const docRef = doc(db, 'resumenPasteleria', mes);
+                    // Usar setDoc en lugar de updateDoc para crear el documento si no existe
+                    await setDoc(docRef, { pago: nuevoValor }, { merge: true });
+                };
+                this.innerHTML = '';
+                this.appendChild(input);
+                input.focus();
+            };
+        });
+        resumenBody.querySelectorAll('.editable-interes').forEach(cell => {
+            cell.ondblclick = function() {
+                const mes = this.dataset.mes;
+                const valor = resumenPasteleria[mes]?.interesRate || 0;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'edit-input';
+                input.value = valor;
+                input.onblur = async function() {
+                    const nuevoValor = parseFloat(this.value) || 0;
+                    const docRef = doc(db, 'resumenPasteleria', mes);
+                    // Usar setDoc en lugar de updateDoc para crear el documento si no existe
+                    await setDoc(docRef, { interesRate: nuevoValor }, { merge: true });
+                };
+                this.innerHTML = '';
+                this.appendChild(input);
+                input.focus();
+            };
+        });
+    }
+
+    function calcularTotalMensual(mes) {
+        let totalFacturacion = 0;
+        const ventasDelMes = ventasPasteleria[mes] || [];
+        const precios = preciosPasteleriaPorMes[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
+        
+        ventasDelMes.forEach(venta => {
+            totalFacturacion += (venta.diatortas * precios.DIATORTAS) +
+                                (venta.mesadulce * precios.MESADULCE) +
+                                (venta.celiaco * precios.CELIACO);
+        });
+        
+        return totalFacturacion;
+    }
+
+    // --- Listeners para Pastelería y Resumen ---
+    onSnapshot(preciosCol, (snapshot) => {
+        preciosPasteleriaPorMes = {};
+        snapshot.docs.forEach(doc => {
+            preciosPasteleriaPorMes[doc.id] = doc.data();
+        });
+        renderizarPasteleria(mesActualPasteleria);
+        actualizarResumenPasteleria();
+    });
+
+    onSnapshot(ventasCol, (snapshot) => {
+        ventasPasteleria = {};
+        snapshot.docs.forEach(doc => {
+            const data = { id: doc.id, ...doc.data() };
+            if (!ventasPasteleria[data.mes]) {
+                ventasPasteleria[data.mes] = [];
+            }
+            ventasPasteleria[data.mes].push(data);
+        });
+        renderizarPasteleria(mesActualPasteleria);
+        actualizarResumenPasteleria();
+    });
+    
+    onSnapshot(resumenPasteleriaCol, (snapshot) => {
+        resumenPasteleria = {};
+        snapshot.docs.forEach(doc => {
+            resumenPasteleria[doc.id] = doc.data();
+        });
+        actualizarResumenPasteleria();
+    });
+
+    // --- Carga Inicial de Datos (se ejecuta solo si la colección está vacía) ---
+    async function cargarDatosIniciales() {
+        const gastosDocs = await getDocs(gastosCol);
+        if (gastosDocs.empty) {
+            for (const gasto of datosInicialesGastos) {
+                await addDoc(gastosCol, gasto);
+            }
+        }
+        const sueldosDocs = await getDocs(sueldosCol);
+        if (sueldosDocs.empty) {
+            for (const sueldo of datosInicialesSueldos) {
+                await addDoc(sueldosCol, sueldo);
+            }
+        }
+        const preciosDocs = await getDocs(preciosCol);
+        if (preciosDocs.empty) {
+            for (const mes in datosInicialesPrecios) {
+                await setDoc(doc(db, 'preciosPasteleria', mes), datosInicialesPrecios[mes]);
+            }
+        }
+        const ventasDocs = await getDocs(ventasCol);
+        if (ventasDocs.empty) {
+            for (const mes in datosInicialesVentas) {
+                for (const venta of datosInicialesVentas[mes]) {
+                    await addDoc(ventasCol, { ...venta, mes });
+                }
+            }
+        }
+        const resumenDocs = await getDocs(resumenPasteleriaCol);
+        if (resumenDocs.empty) {
+            for (const mes in datosInicialesResumen) {
+                await setDoc(doc(db, 'resumenPasteleria', mes), datosInicialesResumen[mes]);
+            }
+        }
+    }
+
+    // --- Inicialización al cargar la página ---
+    document.addEventListener('DOMContentLoaded', function() {
+        calcularMontoPrestamo();
+        cargarDatosIniciales();
+        crearTablasPasteleria();
+        
+        document.getElementById('btn-agregar-gasto').addEventListener('click', agregarGasto);
+        document.getElementById('btn-agregar-sueldo').addEventListener('click', agregarSueldo);
+    });
+</script>
+
+</body>
+</html>
