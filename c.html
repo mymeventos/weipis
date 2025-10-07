@@ -808,13 +808,14 @@
     }
 
     // --- Lógica del Resumen Anual ---
-    function actualizarResumenPasteleria() {
+    async function actualizarResumenPasteleria() {
         const resumenBody = document.getElementById('resumen-pasteleria-body');
         resumenBody.innerHTML = '';
         
         let totalAnterior = 0;
 
-        meses.forEach(mes => {
+        // Recorremos mes por mes en orden (para usar totalAnterior correctamente)
+        for (const mes of meses) {
             const ventasDelMes = ventasPasteleria[mes] || [];
             const precios = preciosPasteleriaPorMes[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
             
@@ -831,8 +832,9 @@
             
             const deudaAcumulada = totalAnterior;
             
-            const totalCalculado = (deudaAcumulada + deudaDelMes - pago) * (1 + interes / 100);
-            const total = resumenData.total ?? totalCalculado;
+            // Cálculo automático correcto:
+            const totalCalculado = (deudaDelMes + deudaAcumulada - pago) * (1 + interes / 100);
+            const total = totalCalculado;
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -845,9 +847,19 @@
             `;
             resumenBody.appendChild(row);
 
-            totalAnterior = total;
-        });
+            // Guardar automáticamente en Firestore (para persistencia)
+            try {
+                const docRef = doc(db, 'resumenPasteleria', mes);
+                await setDoc(docRef, { deudaDelMes, deudaAcumulada, pago, interes, total }, { merge: true });
+            } catch (e) {
+                console.error('Error guardando resumenPasteleria para', mes, e);
+            }
 
+            // El total calculado pasa a ser la deuda acumulada del siguiente mes
+            totalAnterior = total;
+        }
+
+        // Habilitar edición manual (igual que antes)
         document.querySelectorAll('.editable-resumen').forEach(cell => {
             cell.ondblclick = function() {
                 const mes = this.dataset.mes;
