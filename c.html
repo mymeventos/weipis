@@ -217,6 +217,17 @@
             vertical-align: middle;
             text-align: center;
         }
+        /* selector año */
+        .year-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .year-selector select {
+            width: 120px;
+            padding: 6px;
+        }
     </style>
 </head>
 <body>
@@ -307,6 +318,20 @@
 
     <div class="section">
         <h2>Resumen Pastelería</h2>
+
+        <!-- selector de año -->
+        <div class="year-selector">
+            <label for="selector-ano">📅 Año:</label>
+            <select id="selector-ano">
+                <!-- opciones se pueden ajustar -->
+                <option value="2025" selected>2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+            </select>
+            <div style="margin-left:auto;color:#666;font-size:0.9em;">Los datos de ventas se filtran por el año seleccionado (según la fecha)</div>
+        </div>
+
         <table class="summary-table">
             <thead>
                 <tr>
@@ -579,7 +604,7 @@
     onSnapshot(sueldosCol, (snapshot) => {
         sueldos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderizarSueldos();
-        actualizarResumenPasteleria();
+        attemptActualizarResumen();
     });
 
     onSnapshot(inflacionCol, (snapshot) => {
@@ -588,16 +613,27 @@
             inflacionData[doc.id] = doc.data().inflacion;
         });
         renderizarSueldos();
-        actualizarResumenPasteleria();
+        attemptActualizarResumen();
     });
 
     // --- Lógica de Pastelería ---
     const ventasCol = collection(db, 'ventasPasteleria');
     const preciosCol = collection(db, 'preciosPasteleria');
     const resumenPasteleriaCol = collection(db, 'resumenPasteleria');
-    let ventasPasteleria = {};
-    let preciosPasteleriaPorMes = {};
-    let resumenPasteleria = {};
+
+    // Estructuras multi-año
+    // ventasByYear[year] = { 'Enero': [...], 'Febrero': [...] ... }
+    let ventasByYear = {};
+    // precios: dos mapas, uno por mes (legacy) y otro por año_mes (nueva)
+    let preciosByMonth = {}; // legacy: preciosByMonth['Enero'] = {DIATORTAS:..., MESADULCE:..., CELIACO:...}
+    let preciosByYearMonth = {}; // preciosByYearMonth['2025_Enero'] = {...}
+    // resumenByYear[year] = { 'Enero': {...}, 'Febrero': {...} }
+    let resumenByYear = {};
+
+    let ventasLoaded = false;
+    let preciosLoaded = false;
+    let resumenLoaded = false;
+
     let mesActualPasteleria = 'Febrero';
 
     function crearTablasPasteleria() {
@@ -693,7 +729,9 @@
         let totalMesadulce = 0;
         let totalCeliaco = 0;
 
-        const ventasDelMes = ventasPasteleria[mes] || [];
+        // tomamos año seleccionado para mostrar ventas del año seleccionado en la tabla del mes
+        const selectedYear = document.getElementById('selector-ano').value;
+        const ventasDelMes = (ventasByYear[selectedYear] && ventasByYear[selectedYear][mes]) ? [...ventasByYear[selectedYear][mes]] : [];
         ventasDelMes.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
         ventasDelMes.forEach((venta) => {
@@ -716,15 +754,18 @@
         document.getElementById(`pasteleria-total-mesadulce-${mes}`).textContent = totalMesadulce;
         document.getElementById(`pasteleria-total-celiaco-${mes}`).textContent = totalCeliaco;
         
-        const precios = preciosPasteleriaPorMes[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
+        // precio: prioridad a precio por año_mes, si no existe, fallback a precio "global" por mes (legacy)
+        const selectedYear = document.getElementById('selector-ano').value;
+        const precioYearMonthKey = `${selectedYear}_${mes}`;
+        const precios = preciosByYearMonth[precioYearMonthKey] || preciosByMonth[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
         
-        document.getElementById(`precio-diatortas-${mes}`).value = precios.DIATORTAS;
-        document.getElementById(`precio-mesadulce-${mes}`).value = precios.MESADULCE;
-        document.getElementById(`precio-celiaco-${mes}`).value = precios.CELIACO;
+        document.getElementById(`precio-diatortas-${mes}`).value = precios.DIATORTAS ?? 0;
+        document.getElementById(`precio-mesadulce-${mes}`).value = precios.MESADULCE ?? 0;
+        document.getElementById(`precio-celiaco-${mes}`).value = precios.CELIACO ?? 0;
 
-        const parcialDiatortas = totalDiatortas * precios.DIATORTAS;
-        const parcialMesadulce = totalMesadulce * precios.MESADULCE;
-        const parcialCeliaco = totalCeliaco * precios.CELIACO;
+        const parcialDiatortas = totalDiatortas * (precios.DIATORTAS || 0);
+        const parcialMesadulce = totalMesadulce * (precios.MESADULCE || 0);
+        const parcialCeliaco = totalCeliaco * (precios.CELIACO || 0);
 
         document.getElementById(`pasteleria-parcial-diatortas-${mes}`).textContent = formatCurrency(parcialDiatortas);
         document.getElementById(`pasteleria-parcial-mesadulce-${mes}`).textContent = formatCurrency(parcialMesadulce);
@@ -754,6 +795,7 @@
 
         if (fecha) {
             try {
+                // Al agregar, mantenemos la estructura original (doc con fields mes y fecha)
                 await addDoc(ventasCol, { mes, fecha, diatortas, mesadulce, celiaco });
                 document.getElementById(`pasteleria-fecha-${mes}`).value = '';
                 document.getElementById(`pasteleria-diatortas-${mes}`).value = '';
@@ -768,11 +810,15 @@
     }
     
     async function actualizarPreciosPasteleria(mes) {
-        const docRef = doc(db, 'preciosPasteleria', mes);
+        const selectedYear = document.getElementById('selector-ano').value;
+        const keyYearMonth = `${selectedYear}_${mes}`;
+
         const diatortas = parseFloat(document.getElementById(`precio-diatortas-${mes}`).value) || 0;
         const mesadulce = parseFloat(document.getElementById(`precio-mesadulce-${mes}`).value) || 0;
         const celiaco = parseFloat(document.getElementById(`precio-celiaco-${mes}`).value) || 0;
         
+        // Guardamos en doc con id año_mes para separar por año
+        const docRef = doc(db, 'preciosPasteleria', keyYearMonth);
         await setDoc(docRef, { DIATORTAS: diatortas, MESADULCE: mesadulce, CELIACO: celiaco }, { merge: true });
     }
 
@@ -807,33 +853,49 @@
         });
     }
 
-    // --- Lógica del Resumen Anual ---
+    // --- Lógica del Resumen Anual (multi-año) ---
+    // Intentamos actualizar resumen solo cuando ventas, precios y resumen estén cargados
+    function attemptActualizarResumen() {
+        if (ventasLoaded && preciosLoaded && resumenLoaded) {
+            actualizarResumenPasteleria();
+        }
+    }
+
+    // Función principal corregida y multi-año
     async function actualizarResumenPasteleria() {
         const resumenBody = document.getElementById('resumen-pasteleria-body');
         resumenBody.innerHTML = '';
-        
+
+        const selectedYear = document.getElementById('selector-ano').value;
+
+        // Obtenemos resumenByYear[selectedYear] si existe
+        const resumenDataForYear = resumenByYear[selectedYear] || {};
+
         let totalAnterior = 0;
 
-        // Recorremos mes por mes en orden (para usar totalAnterior correctamente)
+        // Recorremos mes por mes en orden para usar totalAnterior correctamente
         for (const mes of meses) {
-            const ventasDelMes = ventasPasteleria[mes] || [];
-            const precios = preciosPasteleriaPorMes[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
-            
-            const totalDiatortas = ventasDelMes.reduce((sum, venta) => sum + venta.diatortas, 0);
-            const totalMesadulce = ventasDelMes.reduce((sum, venta) => sum + venta.mesadulce, 0);
-            const totalCeliaco = ventasDelMes.reduce((sum, venta) => sum + venta.celiaco, 0);
-            
+            // ventas del mes filtradas por año (según la fecha de cada venta)
+            const ventasDelMes = (ventasByYear[selectedYear] && ventasByYear[selectedYear][mes]) ? ventasByYear[selectedYear][mes] : [];
+            const preciosKey = `${selectedYear}_${mes}`;
+            const precios = preciosByYearMonth[preciosKey] || preciosByMonth[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
+
+            const totalDiatortas = ventasDelMes.reduce((sum, venta) => sum + (venta.diatortas || 0), 0);
+            const totalMesadulce = ventasDelMes.reduce((sum, venta) => sum + (venta.mesadulce || 0), 0);
+            const totalCeliaco = ventasDelMes.reduce((sum, venta) => sum + (venta.celiaco || 0), 0);
+
             const deudaDelMesCalculada = (totalDiatortas * precios.DIATORTAS) + (totalMesadulce * precios.MESADULCE) + (totalCeliaco * precios.CELIACO);
-            
-            const resumenData = resumenPasteleria[mes] || {};
-            const deudaDelMes = resumenData.deudaDelMes ?? deudaDelMesCalculada;
-            const pago = resumenData.pago ?? 0;
-            const interes = resumenData.interes ?? 0;
-            
+
+            const resumenDoc = resumenDataForYear[mes] || {};
+            // Si Firestore tiene deudaDelMes almacenada explícitamente, usamos eso; si no, usamos lo calculado
+            const deudaDelMes = (typeof resumenDoc.deudaDelMes === 'number') ? resumenDoc.deudaDelMes : deudaDelMesCalculada;
+            const pago = resumenDoc.pago ?? 0;
+            const interes = resumenDoc.interes ?? 0;
+
             const deudaAcumulada = totalAnterior;
-            
-            // Cálculo automático correcto:
-            const totalCalculado = (deudaDelMes + deudaAcumulada - pago) * (1 + interes / 100);
+
+            // cálculo correcto:
+            const totalCalculado = (deudaDelMes + deudaAcumulada - pago) * (1 + (interes / 100));
             const total = totalCalculado;
 
             const row = document.createElement('tr');
@@ -847,15 +909,16 @@
             `;
             resumenBody.appendChild(row);
 
-            // Guardar automáticamente en Firestore (para persistencia)
+            // Guardar en Firestore en doc id `${año}_${mes}` para persistencia
             try {
-                const docRef = doc(db, 'resumenPasteleria', mes);
-                await setDoc(docRef, { deudaDelMes, deudaAcumulada, pago, interes, total }, { merge: true });
+                const docId = `${selectedYear}_${mes}`;
+                const docRef = doc(db, 'resumenPasteleria', docId);
+                await setDoc(docRef, { año: parseInt(selectedYear,10), mes, deudaDelMes, deudaAcumulada, pago, interes, total }, { merge: true });
             } catch (e) {
                 console.error('Error guardando resumenPasteleria para', mes, e);
             }
 
-            // El total calculado pasa a ser la deuda acumulada del siguiente mes
+            // el total calculado pasa a ser deuda acumulada para el siguiente mes
             totalAnterior = total;
         }
 
@@ -864,7 +927,6 @@
             cell.ondblclick = function() {
                 const mes = this.dataset.mes;
                 const field = this.dataset.field;
-                const isCurrency = field !== 'interes';
                 const valorTexto = this.textContent.replace('$', '').replace(/\./g, '').replace(',', '.').replace('%', '');
                 const valor = parseFloat(valorTexto) || 0;
                 
@@ -880,8 +942,13 @@
                 
                 input.onblur = async function() {
                     const nuevoValor = parseFloat(this.value) || 0;
-                    const docRef = doc(db, 'resumenPasteleria', mes);
+                    const selectedYear = document.getElementById('selector-ano').value;
+                    const docId = `${selectedYear}_${mes}`;
+                    const docRef = doc(db, 'resumenPasteleria', docId);
+                    // guardamos el campo editado
                     await setDoc(docRef, { [field]: nuevoValor }, { merge: true });
+                    // Refrescar el resumen (lo recalcula todo)
+                    await actualizarResumenPasteleria();
                 };
             };
         });
@@ -889,33 +956,68 @@
 
     // --- Listeners para Pastelería y Resumen ---
     onSnapshot(preciosCol, (snapshot) => {
-        preciosPasteleriaPorMes = {};
-        snapshot.docs.forEach(doc => {
-            preciosPasteleriaPorMes[doc.id] = doc.data();
+        // reinicializamos
+        preciosByMonth = {};
+        preciosByYearMonth = {};
+        snapshot.docs.forEach(docSnap => {
+            const id = docSnap.id; // puede ser "Enero" (legacy) o "2025_Enero" (nuevo)
+            const data = docSnap.data();
+            if (id.includes('_')) {
+                // formato año_mes
+                preciosByYearMonth[id] = data;
+            } else {
+                // legacy por mes
+                preciosByMonth[id] = data;
+            }
         });
+        preciosLoaded = true;
+        // re-render de la tabla visible por si cambió el precio del mes seleccionado
         renderizarPasteleria(mesActualPasteleria);
-        actualizarResumenPasteleria();
+        attemptActualizarResumen();
     });
 
     onSnapshot(ventasCol, (snapshot) => {
-        ventasPasteleria = {};
-        snapshot.docs.forEach(doc => {
-            const data = { id: doc.id, ...doc.data() };
-            if (!ventasPasteleria[data.mes]) {
-                ventasPasteleria[data.mes] = [];
+        // reconstruimos ventasByYear
+        ventasByYear = {};
+        snapshot.docs.forEach(docSnap => {
+            const data = { id: docSnap.id, ...docSnap.data() };
+            // data.mes debería existir (p. ej. 'Febrero') y data.fecha en formato 'YYYY-MM-DD'
+            const fechaStr = data.fecha || '';
+            let year = null;
+            if (fechaStr && fechaStr.includes('-')) {
+                year = fechaStr.split('-')[0];
+            } else {
+                // si no hay fecha, asumimos 2025 para compatibilidad (pero ideal que tenga fecha)
+                year = '2025';
             }
-            ventasPasteleria[data.mes].push(data);
+            if (!ventasByYear[year]) ventasByYear[year] = {};
+            if (!ventasByYear[year][data.mes]) ventasByYear[year][data.mes] = [];
+            ventasByYear[year][data.mes].push(data);
         });
+        ventasLoaded = true;
         renderizarPasteleria(mesActualPasteleria);
-        actualizarResumenPasteleria();
+        attemptActualizarResumen();
     });
     
     onSnapshot(resumenPasteleriaCol, (snapshot) => {
-        resumenPasteleria = {};
-        snapshot.docs.forEach(doc => {
-            resumenPasteleria[doc.id] = doc.data();
+        // reconstruimos resumenByYear
+        resumenByYear = {};
+        snapshot.docs.forEach(docSnap => {
+            const id = docSnap.id; // puede ser '2025_Enero' o 'Enero' (legacy)
+            const data = docSnap.data();
+            if (id.includes('_')) {
+                const [yr, mes] = id.split('_');
+                if (!resumenByYear[yr]) resumenByYear[yr] = {};
+                resumenByYear[yr][mes] = data;
+            } else {
+                // legacy: documento llamado 'Enero' -> lo guardamos en 2025 por compatibilidad
+                const yr = (data.año && String(data.año)) || '2025';
+                if (!resumenByYear[yr]) resumenByYear[yr] = {};
+                resumenByYear[yr][id] = data;
+            }
         });
-        actualizarResumenPasteleria();
+        resumenLoaded = true;
+        attemptActualizarResumen();
     });
 
     // --- Carga Inicial de Datos (se ejecuta solo si la colección está vacía) ---
@@ -1034,7 +1136,10 @@
         const preciosDocs = await getDocs(preciosCol);
         if (preciosDocs.empty) {
             for (const mes in datosInicialesPrecios) {
+                // guardamos legacy (solo mes) precios
                 await setDoc(doc(db, 'preciosPasteleria', mes), datosInicialesPrecios[mes]);
+                // y además guardamos un precio por defecto para 2025_mes para que el selector de 2025 tenga datos
+                await setDoc(doc(db, 'preciosPasteleria', `2025_${mes}`), datosInicialesPrecios[mes]);
             }
         }
         const ventasDocs = await getDocs(ventasCol);
@@ -1047,8 +1152,9 @@
         }
         const resumenDocs = await getDocs(resumenPasteleriaCol);
         if (resumenDocs.empty) {
+            // guardamos en formato 2025_Mes para el año 2025
             for (const mes in datosInicialesResumen) {
-                await setDoc(doc(db, 'resumenPasteleria', mes), datosInicialesResumen[mes]);
+                await setDoc(doc(db, 'resumenPasteleria', `2025_${mes}`), datosInicialesResumen[mes]);
             }
         }
     }
@@ -1061,6 +1167,12 @@
         
         document.getElementById('btn-agregar-gasto').addEventListener('click', agregarGasto);
         document.getElementById('btn-agregar-sueldo').addEventListener('click', agregarSueldo);
+
+        // cambiar año reenfuerza el render y recalculo
+        document.getElementById('selector-ano').addEventListener('change', () => {
+            renderizarPasteleria(mesActualPasteleria);
+            attemptActualizarResumen();
+        });
     });
 </script>
 
