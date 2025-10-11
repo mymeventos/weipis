@@ -110,6 +110,21 @@
         .desglose-prestamo table {
             width: 100%;
         }
+        .btn-moderno {
+            margin-top: 15px;
+            width: 100%;
+            padding: 10px;
+            font-size: 1.1em;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-moderno:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -142,14 +157,13 @@
                     <th>Monto 'K'</th>
                     <th>Monto 'Milei'</th>
                     <th>Inflación (%)</th>
-                    <th style="width: 40px;"></th>
                 </tr>
             </thead>
             <tbody id="sueldos-list"></tbody>
             <tfoot>
                 <tr id="sueldos-total-row">
                     <td colspan="4" class="saldo-total">Total Adeudado General</td>
-                    <td colspan="2" id="sueldos-total" class="saldo-total"></td>
+                    <td id="sueldos-total" class="saldo-total"></td>
                 </tr>
             </tfoot>
         </table>
@@ -185,7 +199,7 @@
             <p>Interés Semanal: 1.5%</p>
             <p>Fecha de Inicio: 7/01/2025</p>
             <div class="saldo-total">Monto Adeudado a la fecha: <span id="montoFinalPrestamo"></span></div>
-            <button id="btn-desglose-prestamo" style="margin-top: 10px;">Mostrar Desglose Semanal</button>
+            <button id="btn-desglose-prestamo" class="btn-moderno">Mostrar Desglose Semanal</button>
             <div class="desglose-prestamo" id="desglose-prestamo-container">
                 <table id="desglose-prestamo-table">
                     <thead>
@@ -263,18 +277,18 @@
         let semana = 1;
         
         while (fechaActual <= new Date()) {
-            const fechaFinSemana = new Date(fechaActual.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const fechaFinSemana = new Date(fechaActual.getTime() + 6 * 24 * 60 * 60 * 1000);
             
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>Semana ${semana}</td>
-                <td>${fechaActual.toLocaleDateString()} - ${fechaFinSemana.toLocaleDateString()}</td>
+                <td>${fechaActual.toLocaleDateString('es-AR')} - ${fechaFinSemana.toLocaleDateString('es-AR')}</td>
                 <td>${formatCurrency(montoSemanal)}</td>
             `;
             desgloseTableBody.appendChild(row);
             
             montoSemanal *= (1 + interesSemanal);
-            fechaActual = fechaFinSemana;
+            fechaActual = new Date(fechaFinSemana.getTime() + 1 * 24 * 60 * 60 * 1000);
             semana++;
         }
         
@@ -291,14 +305,17 @@
         gastosList.innerHTML = '';
         
         const depositoRow = document.createElement('tr');
-        depositoRow.innerHTML = `<td>2025-01-01</td><td>DEPOSITO</td><td>${formatCurrency(saldoInicialCajaChica)}</td>`;
+        depositoRow.innerHTML = `<td>${formatDate('2025-01-01')}</td><td>DEPOSITO</td><td>${formatCurrency(saldoInicialCajaChica)}</td>`;
         gastosList.appendChild(depositoRow);
 
         let totalGastos = 0;
-        gastos.forEach(gasto => {
+        
+        const gastosOrdenados = [...gastos].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+        gastosOrdenados.forEach(gasto => {
             totalGastos += gasto.monto;
             const row = document.createElement('tr');
-            row.innerHTML = `<td>${gasto.fecha}</td><td>${gasto.descripcion}</td><td>- ${formatCurrency(gasto.monto)}</td>`;
+            row.innerHTML = `<td>${formatDate(gasto.fecha)}</td><td>${gasto.descripcion}</td><td>- ${formatCurrency(gasto.monto)}</td>`;
             gastosList.appendChild(row);
         });
 
@@ -349,7 +366,6 @@
                         <td class="${pago.kPagado ? 'pagado' : 'adeudado'}">${formatCurrency(pago.montoK)}</td>
                         <td class="${pago.mileiPagado ? 'pagado' : 'adeudado'}">${formatCurrency(pago.montoMilei)}</td>
                         <td>${index === 0 ? `${inflacion.toFixed(1)}%` : ''}</td>
-                        <td></td>
                     `;
                     sueldosList.appendChild(row);
                 });
@@ -457,7 +473,7 @@
         ventasDelMes.forEach((venta) => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${venta.fecha}</td>
+                <td>${formatDate(venta.fecha)}</td>
                 <td class="pasteleria-cell">${venta.diatortas}</td>
                 <td class="pasteleria-cell">${venta.mesadulce}</td>
                 <td class="pasteleria-cell">${venta.celiaco}</td>
@@ -494,7 +510,6 @@
     // --- Lógica del Resumen Anual ---
     function actualizarResumenPasteleria() {
         const resumenBody = document.getElementById('resumen-pasteleria-body');
-        if (!resumenBody) return;
         resumenBody.innerHTML = '';
         
         let totalAnterior = 0;
@@ -503,21 +518,19 @@
             const ventasDelMes = ventasPasteleria[mes] || [];
             const precios = preciosPasteleriaPorMes[mes] || { DIATORTAS: 0, MESADULCE: 0, CELIACO: 0 };
             
-            const totalDiatortas = ventasDelMes.reduce((sum, venta) => sum + venta.diatortas, 0);
-            const totalMesadulce = ventasDelMes.reduce((sum, venta) => sum + venta.mesadulce, 0);
-            const totalCeliaco = ventasDelMes.reduce((sum, venta) => sum + venta.celiaco, 0);
-            
-            const deudaDelMesCalculada = (totalDiatortas * precios.DIATORTAS) + (totalMesadulce * precios.MESADULCE) + (totalCeliaco * precios.CELIACO);
+            const facturacionDelMes = 
+                (ventasDelMes.reduce((sum, v) => sum + v.diatortas, 0) * precios.DIATORTAS) +
+                (ventasDelMes.reduce((sum, v) => sum + v.mesadulce, 0) * precios.MESADULCE) +
+                (ventasDelMes.reduce((sum, v) => sum + v.celiaco, 0) * precios.CELIACO);
             
             const resumenData = resumenPasteleria[mes] || {};
-            const deudaDelMes = resumenData.deudaDelMes ?? deudaDelMesCalculada;
+            const deudaDelMes = resumenData.deudaDelMes ?? facturacionDelMes;
             const pago = resumenData.pago ?? 0;
             const interes = resumenData.interes ?? 0;
             
             const deudaAcumulada = totalAnterior;
             
-            const totalCalculado = (deudaAcumulada + deudaDelMes - pago) * (1 + interes / 100);
-            const total = resumenData.total ?? totalCalculado;
+            const total = (deudaAcumulada + deudaDelMes - pago) * (1 + interes / 100);
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -534,17 +547,10 @@
         });
     }
 
-    // --- Carga Inicial de Datos (se ejecuta solo si la colección está vacía) ---
-    async function cargarDatosIniciales() {
-        // La lógica de carga inicial se mantiene igual para poblar la base de datos si está vacía
-        // pero se eliminan las llamadas a `addDoc`, `updateDoc` y `deleteDoc` en el resto del código
-    }
-
     // --- Inicialización al cargar la página ---
     document.addEventListener('DOMContentLoaded', function() {
-        // Inicializar listeners después de que el DOM esté cargado
         onSnapshot(gastosCol, (snapshot) => {
-            gastos = snapshot.docs.map(doc => doc.data());
+            gastos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             renderizarCajaChica();
         });
 
